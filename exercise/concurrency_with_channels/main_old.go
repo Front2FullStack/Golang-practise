@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"runtime"
 	"strings"
 )
 
-func readFromChannel(input chan string, output chan string) {
-	var url string
-	url = <-input
-	output <- url
-}
-func checkAndSaveBody(output chan string) {
-	var url string
-	url = <-output
+func checkAndSaveBody(url string, c chan string) {
 	resp, err := http.Get(url)
 
 	if err != nil {
@@ -25,7 +19,7 @@ func checkAndSaveBody(output chan string) {
 		// Sending the string over the channel.
 		// This is a blocking call, so this goroutine will
 		// wait for the main goroutine to receive it on the other part of the channel.
-		output <- s
+		c <- s
 	} else {
 
 		s := fmt.Sprintf("Status Code: %d  \n", resp.StatusCode)
@@ -44,13 +38,13 @@ func checkAndSaveBody(output chan string) {
 				s += "Error writing to file!\n"
 
 				// sending s over the channel
-				output <- s
+				c <- s
 			}
 		}
 		s += fmt.Sprintf("%s is UP\n", url)
 
 		// sending s over the channel
-		output <- s
+		c <- s
 	}
 }
 
@@ -58,16 +52,17 @@ func main() {
 	urls := []string{"https://www.golang.org", "https://www.google.com", "https://www.youtube.com", "https://www.facebook.com"}
 
 	// Declaring a new channel
-	input := make(chan string)
-	output := make(chan string)
-
-	go readFromChannel(input, output)
+	c := make(chan string)
 
 	for _, url := range urls {
-		input <- url
+		// Launching the goroutines
+		go checkAndSaveBody(url, c)
 	}
 
-	for elem := range output {
-		checkAndSaveBody(elem)
+	fmt.Println("No. of Goroutines:", runtime.NumGoroutine()) // => 5
+
+	// Receiving the messages from the channel
+	for i := 0; i < len(urls); i++ {
+		fmt.Println(<-c)
 	}
 }

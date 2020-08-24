@@ -18,6 +18,7 @@ func main() {
 		var user User
 		// decoding json body
 		json.NewDecoder(r.Body).Decode(&user)
+		
 
 		fmt.Fprintf(w, "%s %s is %d years old!", user.Firstname, user.Lastname, user.Age)
 	})
